@@ -148,4 +148,91 @@ assert not stale({("pulse_monitor", "agent-1")}) and not stale({("pulse_monitor"
 assert not stale({("pulse_monitor", "entry")})
 assert stale({("pulse_monitor", "app-container-old")}) and stale({("other", "apprise")})
 
+# Custom metric fixtures and tests
+CUSTOM_NUMBER = {
+    "id": "backup_age",
+    "name": "Backup age",
+    "group": "Host",
+    "subgroup": "Backups",
+    "kind": "number",
+    "unit": "hours",
+    "value": 3.5,
+    "status": "ok",
+    "observedAt": "2026-10-03T20:00:00Z",
+    "stale": False,
+}
+CUSTOM_BOOL = {
+    "id": "service_active",
+    "name": "Service Active",
+    "group": "Services",
+    "kind": "boolean",
+    "value": 1,
+    "status": "ok",
+    "stale": False,
+}
+CUSTOM_TIMESTAMP = {
+    "id": "last_sync",
+    "name": "Last Sync",
+    "kind": "timestamp",
+    "eventAt": "2026-10-03T21:30:00Z",
+    "status": "ok",
+    "stale": False,
+}
+CUSTOM_STALE = {
+    "id": "stale_check",
+    "name": "Stale Check",
+    "group": "Checks",
+    "subgroup": "Health",
+    "kind": "number",
+    "unit": "ms",
+    "value": 42.0,
+    "status": "error",
+    "stale": True,
+    "error": "Source timeout",
+}
+
+assert h.custom_name(CUSTOM_NUMBER) == "Host / Backups / Backup age"
+assert h.custom_name(CUSTOM_BOOL) == "Services / Service Active"
+assert h.custom_name(CUSTOM_TIMESTAMP) == "Last Sync"
+assert h.custom_name({"id": "only_id"}) == "only_id"
+
+assert h.custom_number(CUSTOM_NUMBER) == 3.5
+assert h.custom_number({"value": True}) is None
+assert h.custom_number({"value": "invalid"}) is None
+
+
+assert h.custom_boolean(CUSTOM_BOOL) is True
+assert h.custom_boolean({"value": 0}) is False
+assert h.custom_boolean({"value": "online"}) is True
+assert h.custom_boolean({"value": "offline"}) is False
+assert h.custom_boolean({"value": None}) is None
+
+assert h.custom_timestamp(CUSTOM_TIMESTAMP) == datetime(2026, 10, 3, 21, 30, 0, tzinfo=timezone.utc)
+assert h.custom_timestamp(CUSTOM_NUMBER) == datetime(2026, 10, 3, 20, 0, 0, tzinfo=timezone.utc)
+assert h.custom_timestamp({}) is None
+
+assert h.custom_attrs(CUSTOM_NUMBER) == {
+    "status": "ok",
+    "stale": False,
+    "observed_at": "2026-10-03T20:00:00Z",
+}
+assert h.custom_attrs(CUSTOM_STALE) == {
+    "status": "error",
+    "stale": True,
+    "error": "Source timeout",
+}
+
+AGENT_WITH_CUSTOM = {
+    "id": "agent-custom-1",
+    "agent": {
+        "sensors": {
+            "custom": [CUSTOM_NUMBER, CUSTOM_BOOL, CUSTOM_TIMESTAMP, CUSTOM_STALE]
+        }
+    },
+}
+assert h.get_custom_metric(AGENT_WITH_CUSTOM, "backup_age") == CUSTOM_NUMBER
+assert h.get_custom_metric(AGENT_WITH_CUSTOM, "nonexistent") is None
+assert h.get_custom_metric({}, "backup_age") is None
+
 print("ok")
+

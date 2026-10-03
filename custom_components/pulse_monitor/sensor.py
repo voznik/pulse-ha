@@ -159,7 +159,7 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data
     data = coordinator.data
-    entities: list[PulseSensor] = [
+    entities: list[SensorEntity] = [
         PulseSensor(coordinator, d, "agents", rid)
         for rid in data["agents"]
         for d in AGENT_SENSORS
@@ -171,6 +171,29 @@ async def async_setup_entry(
         for d in CONTAINER_SENSORS
     ]
     entities += [PulseSensor(coordinator, d, None, None) for d in FLEET_SENSORS]
+
+    for rid, agent in data["agents"].items():
+        for m in h.get(agent, "agent", "sensors", "custom") or []:
+            mid = m.get("id")
+            if not mid:
+                continue
+            kind = m.get("kind", "number")
+            if kind == "timestamp":
+                desc = SensorEntityDescription(
+                    key=f"custom_{mid}",
+                    name=h.custom_name(m),
+                    device_class=SensorDeviceClass.TIMESTAMP,
+                )
+                entities.append(PulseCustomSensor(coordinator, desc, rid, mid))
+            elif kind == "number":
+                desc = SensorEntityDescription(
+                    key=f"custom_{mid}",
+                    name=h.custom_name(m),
+                    native_unit_of_measurement=m.get("unit") or None,
+                    state_class=SensorStateClass.MEASUREMENT,
+                )
+                entities.append(PulseCustomSensor(coordinator, desc, rid, mid))
+
     async_add_entities(entities)
 
 
@@ -194,3 +217,43 @@ class PulseSensor(PulseEntity, SensorEntity):
         fn = self.entity_description.attrs_fn
         src = self.source
         return fn(src) if fn and src is not None else None
+
+
+class PulseCustomSensor(PulseEntity, SensorEntity):
+    def __init__(
+        self,
+        coordinator: PulseCoordinator,
+        description: SensorEntityDescription,
+        agent_id: str,
+        metric_id: str,
+    ) -> None:
+        super().__init__(coordinator, description, "agents", agent_id)
+        self._metric_id = metric_id
+
+    @property
+    def _metric(self) -> dict[str, Any] | None:
+        src = self.source
+        return h.get_custom_metric(src, self._metric_id)
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        m = self._metric
+        return m is not None and not m.get("stale", False)
+
+    @property
+    def native_value(self) -> Any:
+        m = self._metric
+        if m is None:
+            return None
+        kind = m.get("kind", "number")
+        if kind == "timestamp":
+            return h.custom_timestamp(m)
+        return h.custom_number(m)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        m = self._metric
+        return h.custom_attrs(m) if m is not None else None
+

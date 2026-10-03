@@ -219,3 +219,69 @@ def verdict_count(data: dict, name: str) -> int | None:
 
 def problem(data: dict) -> bool:
     return unacked_count(data) > 0 or (verdict_count(data, "critical") or 0) > 0
+
+
+def get_custom_metric(r: dict | None, metric_id: str) -> dict | None:
+    if not r:
+        return None
+    for m in get(r, "agent", "sensors", "custom") or []:
+        if isinstance(m, dict) and m.get("id") == metric_id:
+            return m
+    return None
+
+
+def custom_name(metric: dict) -> str:
+    parts = [
+        p
+        for p in (
+            metric.get("group"),
+            metric.get("subgroup"),
+            metric.get("name") or metric.get("id"),
+        )
+        if p
+    ]
+    return " / ".join(parts) if parts else (metric.get("id") or "Custom Sensor")
+
+
+def custom_number(metric: dict) -> float | int | None:
+    v = metric.get("value")
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def custom_boolean(metric: dict) -> bool | None:
+    v = metric.get("value")
+    if v is None:
+        return None
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v != 0
+    if isinstance(v, str):
+        return v.lower() in ("1", "true", "yes", "on", "up", "online", "healthy")
+    return None
+
+
+def custom_timestamp(metric: dict) -> datetime | None:
+    for key in ("eventAt", "observedAt"):
+        v = metric.get(key)
+        if isinstance(v, datetime):
+            return v
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v)
+            except ValueError:
+                pass
+    return None
+
+
+def custom_attrs(metric: dict) -> dict[str, Any]:
+    attrs: dict[str, Any] = {
+        "status": metric.get("status"),
+        "stale": bool(metric.get("stale")),
+    }
+    if metric.get("observedAt"):
+        attrs["observed_at"] = metric.get("observedAt")
+    if metric.get("error"):
+        attrs["error"] = metric.get("error")
+    return attrs
+

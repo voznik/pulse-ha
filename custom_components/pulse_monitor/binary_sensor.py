@@ -68,7 +68,9 @@ async def async_setup_entry(
     coordinator = entry.runtime_data
     data = coordinator.data
     # Agents first so container via_device targets exist.
-    entities = [PulseBinarySensor(coordinator, ONLINE, "agents", rid) for rid in data["agents"]]
+    entities: list[BinarySensorEntity] = [
+        PulseBinarySensor(coordinator, ONLINE, "agents", rid) for rid in data["agents"]
+    ]
     # ponytail: containers are fixed at setup; new ones need an integration reload.
     entities += [
         PulseBinarySensor(coordinator, d, "containers", rid)
@@ -76,6 +78,20 @@ async def async_setup_entry(
         for d in (RUNNING, UPDATE_AVAILABLE, OOM_KILLED)
     ]
     entities.append(PulseBinarySensor(coordinator, PROBLEM, None, None))
+
+    for rid, agent in data["agents"].items():
+        for m in h.get(agent, "agent", "sensors", "custom") or []:
+            mid = m.get("id")
+            if not mid:
+                continue
+            kind = m.get("kind")
+            if kind == "boolean":
+                desc = BinarySensorEntityDescription(
+                    key=f"custom_{mid}",
+                    name=h.custom_name(m),
+                )
+                entities.append(PulseCustomBinarySensor(coordinator, desc, rid, mid))
+
     async_add_entities(entities)
 
 
@@ -92,3 +108,38 @@ class PulseBinarySensor(PulseEntity, BinarySensorEntity):
         fn = self.entity_description.attrs_fn
         src = self.source
         return fn(src) if fn and src is not None else None
+
+
+class PulseCustomBinarySensor(PulseEntity, BinarySensorEntity):
+    def __init__(
+        self,
+        coordinator: PulseCoordinator,
+        description: BinarySensorEntityDescription,
+        agent_id: str,
+        metric_id: str,
+    ) -> None:
+        super().__init__(coordinator, description, "agents", agent_id)
+        self._metric_id = metric_id
+
+    @property
+    def _metric(self) -> dict[str, Any] | None:
+        src = self.source
+        return h.get_custom_metric(src, self._metric_id)
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        m = self._metric
+        return m is not None and not m.get("stale", False)
+
+    @property
+    def is_on(self) -> bool | None:
+        m = self._metric
+        return h.custom_boolean(m) if m is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        m = self._metric
+        return h.custom_attrs(m) if m is not None else None
+
