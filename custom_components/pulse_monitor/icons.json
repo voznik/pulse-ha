@@ -1,0 +1,35 @@
+{
+  "entity": {
+    "sensor": {
+      "cpu": { "default": "mdi:cpu-64-bit" },
+      "memory": { "default": "mdi:memory" },
+      "memory_used": { "default": "mdi:memory" },
+      "disk": { "default": "mdi:harddisk" },
+      "disk_used": { "default": "mdi:harddisk" },
+      "load": { "default": "mdi:speedometer" },
+      "net_in": { "default": "mdi:download-network" },
+      "net_out": { "default": "mdi:upload-network" },
+      "disk_read": { "default": "mdi:harddisk" },
+      "disk_write": { "default": "mdi:harddisk" },
+      "boot_time": { "default": "mdi:restart" },
+      "package_updates": { "default": "mdi:package-up" },
+      "health": { "default": "mdi:heart-pulse" },
+      "container_health": { "default": "mdi:heart-pulse" },
+      "started": { "default": "mdi:clock-start" },
+      "containers_running": { "default": "mdi:docker" },
+      "containers_unhealthy": { "default": "mdi:docker" },
+      "container_updates": { "default": "mdi:package-up" },
+      "active_alerts": { "default": "mdi:alert" },
+      "verdict_ok": { "default": "mdi:check-circle" },
+      "verdict_attention": { "default": "mdi:alert-circle" },
+      "verdict_critical": { "default": "mdi:alert-octagon" },
+      "verdict_stale": { "default": "mdi:clock-alert" },
+      "verdict_off": { "default": "mdi:power" },
+      "verdict_unknown": { "default": "mdi:help-circle" }
+    },
+    "binary_sensor": {
+      "running": { "default": "mdi:docker" },
+      "oom_killed": { "default": "mdi:memory" }
+    }
+  }
+}

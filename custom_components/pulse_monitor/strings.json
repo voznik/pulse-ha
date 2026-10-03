@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Pulse",
+        "description": "Enter the Pulse URL and an API token with the monitoring:read scope.",
+        "data": {
+          "url": "URL",
+          "api_token": "API token",
+          "verify_ssl": "Verify SSL certificate"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Pulse",
+      "invalid_auth": "Invalid API token"
+    },
+    "abort": {
+      "already_configured": "This Pulse instance is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "cpu": { "name": "CPU" },
+      "memory": { "name": "Memory" },
+      "memory_used": { "name": "Memory used" },
+      "disk": { "name": "Disk" },
+      "disk_used": { "name": "Disk used" },
+      "load": { "name": "Load" },
+      "net_in": { "name": "Network in" },
+      "net_out": { "name": "Network out" },
+      "disk_read": { "name": "Disk read rate" },
+      "disk_write": { "name": "Disk write rate" },
+      "boot_time": { "name": "Last boot" },
+      "package_updates": { "name": "Package updates" },
+      "health": {
+        "name": "Health",
+        "state": {
+          "ok": "OK",
+          "attention": "Attention",
+          "critical": "Critical",
+          "stale": "Stale",
+          "off": "Off",
+          "unknown": "Unknown"
+        }
+      },
+      "container_health": {
+        "name": "Health",
+        "state": {
+          "healthy": "Healthy",
+          "unhealthy": "Unhealthy",
+          "starting": "Starting",
+          "none": "None"
+        }
+      },
+      "started": { "name": "Started" },
+      "containers_running": { "name": "Containers running" },
+      "containers_unhealthy": { "name": "Containers unhealthy" },
+      "container_updates": { "name": "Container updates" },
+      "active_alerts": { "name": "Active alerts" },
+      "verdict_ok": { "name": "Resources OK" },
+      "verdict_attention": { "name": "Resources needing attention" },
+      "verdict_critical": { "name": "Resources critical" },
+      "verdict_stale": { "name": "Resources stale" },
+      "verdict_off": { "name": "Resources off" },
+      "verdict_unknown": { "name": "Resources unknown" }
+    },
+    "binary_sensor": {
+      "online": { "name": "Online" },
+      "running": { "name": "Running" },
+      "update_available": { "name": "Update available" },
+      "oom_killed": { "name": "OOM killed" },
+      "problem": { "name": "Problem" }
+    }
+  }
+}
