@@ -7,6 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_URL, CONF_VERIFY_SSL
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import PulseAuthError, PulseClient, PulseConnectionError
@@ -21,21 +22,27 @@ class PulseConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            url = user_input[CONF_URL].strip().rstrip("/").lower()
-            await self.async_set_unique_id(url)
-            self._abort_if_unique_id_configured()
-            session = async_get_clientsession(self.hass, user_input[CONF_VERIFY_SSL])
-            client = PulseClient(session, url, user_input[CONF_API_TOKEN])
+            url_raw = user_input[CONF_URL].strip().rstrip("/")
             try:
-                await client.async_get_summary()
-            except PulseAuthError:
-                errors["base"] = "invalid_auth"
-            except PulseConnectionError:
-                errors["base"] = "cannot_connect"
+                cv.url(url_raw)
+            except vol.Invalid:
+                errors["base"] = "invalid_url"
             else:
-                return self.async_create_entry(
-                    title="Pulse", data={**user_input, CONF_URL: url}
-                )
+                url = url_raw.lower()
+                await self.async_set_unique_id(url)
+                self._abort_if_unique_id_configured()
+                session = async_get_clientsession(self.hass, user_input[CONF_VERIFY_SSL])
+                client = PulseClient(session, url, user_input[CONF_API_TOKEN])
+                try:
+                    await client.async_get_summary()
+                except PulseAuthError:
+                    errors["base"] = "invalid_auth"
+                except PulseConnectionError:
+                    errors["base"] = "cannot_connect"
+                else:
+                    return self.async_create_entry(
+                        title="Pulse", data={**user_input, CONF_URL: url}
+                    )
 
         schema = vol.Schema(
             {

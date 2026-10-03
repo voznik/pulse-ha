@@ -48,14 +48,20 @@ class PulseClient:
     async def async_get_resources(self, rtype: str) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         page = 1
-        while True:
+        max_pages = 50
+        while page <= max_pages:
             body = await self._get(
                 "resources", {"type": rtype, "limit": 100, "page": page}
             )
-            items.extend(body.get("data") or [])
-            if page >= (body.get("meta") or {}).get("totalPages", 1):
-                return items
+            data = body.get("data") if isinstance(body, dict) else None
+            if not data:
+                break
+            items.extend(data)
+            total_pages = (body.get("meta") or {}).get("totalPages", 1)
+            if page >= total_pages:
+                break
             page += 1
+        return items
 
     async def async_get_alerts(self) -> list[dict[str, Any]]:
         return await self._get("alerts/active") or []

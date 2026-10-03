@@ -13,7 +13,8 @@
     },
     "error": {
       "cannot_connect": "Failed to connect to Pulse",
-      "invalid_auth": "Invalid API token"
+      "invalid_auth": "Invalid API token",
+      "invalid_url": "Invalid URL or scheme (must be http:// or https://)"
     },
     "abort": {
       "already_configured": "This Pulse instance is already configured"
