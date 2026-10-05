@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import helpers as h
-from .coordinator import PulseConfigEntry
+from .coordinator import PulseConfigEntry, PulseCoordinator
 from .entity import PulseEntity
 
 

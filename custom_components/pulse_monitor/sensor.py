@@ -19,7 +19,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import helpers as h
-from .coordinator import PulseConfigEntry
+from .coordinator import PulseConfigEntry, PulseCoordinator
 from .entity import PulseEntity
 
 
@@ -229,6 +229,26 @@ class PulseCustomSensor(PulseEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, description, "agents", agent_id)
         self._metric_id = metric_id
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        entry = self.registry_entry
+        if entry is not None:
+            updates: dict[str, Any] = {}
+            if self.entity_description.device_class == SensorDeviceClass.TIMESTAMP:
+                if entry.unit_of_measurement is not None:
+                    updates["unit_of_measurement"] = None
+                if entry.capabilities and "state_class" in entry.capabilities:
+                    updates["capabilities"] = {}
+                if entry.original_device_class != SensorDeviceClass.TIMESTAMP:
+                    updates["original_device_class"] = SensorDeviceClass.TIMESTAMP
+            elif self.entity_description.state_class == SensorStateClass.MEASUREMENT:
+                if entry.capabilities and entry.capabilities.get("state_class") != SensorStateClass.MEASUREMENT:
+                    updates["capabilities"] = {"state_class": SensorStateClass.MEASUREMENT}
+            if updates:
+                from homeassistant.helpers import entity_registry as er
+
+                er.async_get(self.hass).async_update_entity(self.entity_id, **updates)
 
     @property
     def _metric(self) -> dict[str, Any] | None:
