@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: "ubuntu-latest"
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      MANIFEST: custom_components/pulse_monitor/manifest.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set manifest version
+        run: |
+          jq --arg v "${TAG#v}" '.version = $v' "$MANIFEST" > manifest.tmp
+          mv manifest.tmp "$MANIFEST"
+
+      - name: Commit version to main
+        run: |
+          git diff --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: release $TAG"
+          git push origin main
+
+      - name: Zip integration
+        run: cd custom_components/pulse_monitor && zip -r "$GITHUB_WORKSPACE/pulse_monitor.zip" . -x '*__pycache__*'
+
+      - name: Create release
+        run: gh release create "$TAG" pulse_monitor.zip --title "$TAG" --generate-notes --verify-tag
