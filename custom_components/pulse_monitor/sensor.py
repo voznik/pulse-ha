@@ -215,6 +215,9 @@ async def async_setup_entry(
                     native_unit_of_measurement=UnitOfTemperature.CELSIUS,
                     state_class=SensorStateClass.MEASUREMENT,
                     suggested_display_precision=1,
+                    # Detailed CPU/core and other native sensor-map readings are
+                    # opt-in; keep the primary, GPU and SMART temperatures visible.
+                    entity_registry_enabled_default=not key.startswith("temperature_sensor_"),
                 )
                 new_entities.append(PulseTemperatureSensor(coordinator, description, rid))
         if new_entities:
