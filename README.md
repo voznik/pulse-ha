@@ -25,6 +25,15 @@ Per agent (one device each): CPU, Memory, Memory used, Disk, Disk used, Load (1m
 Network in/out, Disk read/write rate, Last boot, Package updates, Health (ok / attention /
 critical / stale / off / unknown), and binary sensor Online.
 
+Native temperature readings are discovered at setup and on subsequent polls: the host's
+primary Temperature, individual `temperatureCelsius` sensors (CPU package/cores, NVMe,
+etc.), GPU temperatures, and SMART disk temperatures. These use HA's temperature device
+class, Celsius native units and measurement statistics, and belong to the existing host
+device. Disk identities prefer WWN/serial over device names so reordering disks does not
+swap their history. Missing/invalid readings, offline hosts, standby disks and failed SMART
+temperature collection make the affected sensors unavailable. No temperature entities are
+created for hosts without readings. Pulse's untyped `additional` sensor fields are excluded.
+
 Per Docker container (device named after its Coolify service label, else container name; linked
 to its agent): binary sensors Running, Update available, OOM killed; sensors CPU, Memory, Health,
 Started; disabled by default: Memory used, Network in/out, Disk read/write.

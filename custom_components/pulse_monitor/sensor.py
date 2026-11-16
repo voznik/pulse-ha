@@ -13,8 +13,8 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfDataRate, UnitOfInformation
-from homeassistant.core import HomeAssistant
+from homeassistant.const import PERCENTAGE, UnitOfDataRate, UnitOfInformation, UnitOfTemperature
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
@@ -195,6 +195,58 @@ async def async_setup_entry(
                 entities.append(PulseCustomSensor(coordinator, desc, rid, mid))
 
     async_add_entities(entities)
+
+    known_temperatures: set[tuple[str, str]] = set()
+
+    @callback
+    def add_temperature_sensors() -> None:
+        """Discover readings that may first appear after the initial refresh."""
+        new_entities: list[SensorEntity] = []
+        for rid, agent in coordinator.data["agents"].items():
+            for key, reading in h.temperature_readings(agent).items():
+                identity = (rid, key)
+                if identity in known_temperatures:
+                    continue
+                known_temperatures.add(identity)
+                description = SensorEntityDescription(
+                    key=key,
+                    name=reading["name"],
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                    state_class=SensorStateClass.MEASUREMENT,
+                    suggested_display_precision=1,
+                )
+                new_entities.append(PulseTemperatureSensor(coordinator, description, rid))
+        if new_entities:
+            async_add_entities(new_entities)
+
+    add_temperature_sensors()
+    entry.async_on_unload(coordinator.async_add_listener(add_temperature_sensors))
+
+
+class PulseTemperatureSensor(PulseEntity, SensorEntity):
+    """A native Pulse temperature reading on its existing host device."""
+
+    def __init__(
+        self,
+        coordinator: PulseCoordinator,
+        description: SensorEntityDescription,
+        agent_id: str,
+    ) -> None:
+        super().__init__(coordinator, description, "agents", agent_id)
+
+    @property
+    def available(self) -> bool:
+        return (
+            super().available
+            and h.is_online(self.source)
+            and self.entity_description.key in h.temperature_readings(self.source)
+        )
+
+    @property
+    def native_value(self) -> float | int | None:
+        reading = h.temperature_readings(self.source).get(self.entity_description.key)
+        return reading["value"] if reading is not None else None
 
 
 class PulseSensor(PulseEntity, SensorEntity):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from math import isfinite
 from typing import Any
 
 VERDICTS = ("ok", "attention", "critical", "stale", "off", "unknown")
@@ -102,6 +103,52 @@ def display_name(r: dict) -> str:
 
 def cpu(r: dict) -> float | None:
     return _pct(get(r, "metrics", "cpu", "percent"))
+
+
+def temperature_readings(r: dict | None) -> dict[str, dict[str, Any]]:
+    """Extract explicitly typed Celsius readings, keyed independently of list order."""
+    readings: dict[str, dict[str, Any]] = {}
+
+    def add(key: str, name: str, value: Any) -> None:
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value):
+            readings[key] = {"name": name, "value": value}
+
+    primary = get(r, "agent", "temperature")
+    if primary is None:
+        primary = get(r, "temperature")
+    add("temperature", "Temperature", primary)
+
+    sensors = get(r, "agent", "sensors") or {}
+    temperatures = get(sensors, "temperatureCelsius")
+    if isinstance(temperatures, dict):
+        for key, value in temperatures.items():
+            label = str(key).replace("_", " ")
+            label = label.replace("cpu", "CPU").replace("gpu", "GPU").replace("nvme", "NVMe")
+            add(f"temperature_sensor_{key}", f"{label} temperature", value)
+
+    for gpu in get(sensors, "gpu") or []:
+        if not isinstance(gpu, dict):
+            continue
+        identity = gpu.get("id") or gpu.get("name")
+        if identity:
+            label = gpu.get("name") or identity
+            add(f"temperature_gpu_{identity}", f"GPU {label} temperature", gpu.get("temperatureCelsius"))
+
+    for disk in get(sensors, "smart") or []:
+        if not isinstance(disk, dict) or disk.get("standby"):
+            continue
+        state = get(disk, "collection", "temperature", "state")
+        if state is not None and state != "available":
+            continue
+        identity = disk.get("wwn") or disk.get("serial") or disk.get("device")
+        value = disk.get("temperature")
+        # Legacy SMART payloads report 0 when no measurement was collected.
+        if identity and isinstance(value, (int, float)) and value > 0:
+            label = disk.get("device") or identity
+            add(f"temperature_disk_{identity}", f"Disk {label} temperature", value)
+
+    # `additional` has no unit metadata and can contain non-temperature values.
+    return readings
 
 
 def mem_pct(r: dict) -> float | None:
