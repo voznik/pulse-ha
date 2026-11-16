@@ -25,6 +25,29 @@ Per agent (one device each): CPU, Memory, Memory used, Disk, Disk used, Load (1m
 Network in/out, Disk read/write rate, Last boot, Package updates, Health (ok / attention /
 critical / stale / off / unknown), and binary sensor Online.
 
+Native temperature readings are discovered at setup and on subsequent polls: the host's
+primary Temperature, individual `temperatureCelsius` sensors (CPU package/cores, NVMe,
+etc.), GPU temperatures, and SMART disk temperatures. These use HA's temperature device
+class, Celsius native units and measurement statistics, and belong to the existing host
+device. Disk identities prefer WWN/serial over device names so reordering disks does not
+swap their history. Missing/invalid readings, offline hosts, standby disks and failed SMART
+temperature collection make the affected sensors unavailable. No temperature entities are
+created for hosts without readings. Pulse's untyped `additional` sensor fields are excluded.
+
+To keep host device pages concise, primary host, GPU and SMART disk temperatures are
+enabled by default. Individual `temperatureCelsius` readings (including CPU cores,
+CPU package and NVMe sensor readings) are **disabled by default**. They remain discoverable:
+open the host under **Settings > Devices & services > Pulse**, expand its disabled entities,
+open the desired sensor and enable it. The sensor-map readings can duplicate the primary
+host temperature or a SMART disk temperature, so enable only the detail you need.
+Disabled entities do not record history until enabled. Existing installations retain their
+entity enable/disable choices; changing the default does not disable existing entities.
+
+Home Assistant controls the device page's sections and alphabetical order; an integration
+cannot add custom temperature subheadings or arrange arbitrary groups there. Use a
+dashboard with heading cards for a custom host overview with CPU, disks and temperature
+sections. No diagnostic category is assigned solely to influence the layout.
+
 Per Docker container (device named after its Coolify service label, else container name; linked
 to its agent): binary sensors Running, Update available, OOM killed; sensors CPU, Memory, Health,
 Started; disabled by default: Memory used, Network in/out, Disk read/write.
